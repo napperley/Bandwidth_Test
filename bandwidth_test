@@ -1,0 +1,70 @@
+#!/usr/bin/python
+
+# Tests the bandwidth of the Internet connection. Requires Python 2.7 
+# and the APScheduler (apscheduler) library. Author: Nick Apperley.
+
+
+import subprocess
+from datetime import datetime
+from apscheduler.schedulers.background import BlockingScheduler
+
+# server_addr = 'iperf.scottlinux.com'
+server_addr = '121.74.232.70'
+# port = 5201
+port = 5001
+input_file = 'iperf_test.a'
+output_file = 'iperf_results.txt'
+# Interval in minutes.
+interval = 10
+no_of_streams = 8
+
+
+def _run_iperf():
+    out_type = subprocess.PIPE
+    args = ['iperf', '-c', server_addr, '-p', '%d' % port, '-f',
+            'Kbits', '-F', input_file, '-P', '%d' % no_of_streams]
+    process = subprocess.Popen(args, stdout=out_type)
+
+    return process.communicate()[0]
+
+
+def _generate_output(data):
+    file_mode = 'a'
+
+    with open(output_file, file_mode) as f:
+        f.write('%s\n' % data)
+
+
+def _timestamp():
+    # Use the following date format: 24hour:minute:second 
+    # day-month-year. Example date: 28 Feb 2004, 14:45:10.
+    date_format = '%d %b %Y, %H:%M:%S'
+
+    return datetime.now().strftime(date_format)
+
+
+def _bandwidth_test():
+    results = _run_iperf()
+
+    print '[%s]\n' % _timestamp()
+    print results
+    _generate_output('--Test %s--' % _timestamp())
+    _generate_output(results)
+
+
+if __name__ == '__main__':
+    timer = BlockingScheduler()
+    # Setup the scheduler to run a single job every few minutes. Must 
+    # have 'interval' as the job name otherwise the script will 
+    # terminate with some errors.
+    timer.add_job(_bandwidth_test, 'interval', minutes=interval)
+
+    try:
+        print 'Starting bandwidth test...'
+        # Do the first bandwidth test straight away.
+        _bandwidth_test()
+        # Have all other bandwidth tests scheduled (will not start 
+        # straight away).
+        timer.start()
+    except (KeyboardInterrupt, SystemExit):
+        print '\nFinished bandwidth test.\n'
