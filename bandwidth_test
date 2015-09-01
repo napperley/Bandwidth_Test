@@ -1,13 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 # Tests the bandwidth of the Internet connection. Requires Python 2.7 
-# and the APScheduler (apscheduler) library. Author: Nick Apperley.
+# and the APScheduler (apscheduler) library.
 
 
 import subprocess
 from datetime import datetime
 from apscheduler.schedulers.background import BlockingScheduler
 
+__author__ = 'Nick Apperley'
 # server_addr = 'iperf.scottlinux.com'
 server_addr = '121.74.232.70'
 # port = 5201

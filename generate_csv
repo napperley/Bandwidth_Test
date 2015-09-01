@@ -1,0 +1,100 @@
+#!/usr/bin/python2.7
+
+from datetime import datetime
+
+__author__ = 'Nick Apperley'
+input_file = '/home/napperley/iperf_results.txt'
+csv_file = '/home/napperley/bandwidth_test.csv'
+# End of file.
+eof = ''
+
+
+def _main():
+    result = []
+    data = []
+    mode = 'r'
+
+    with open(input_file, mode) as f:
+        while True:
+            result = _read_result(f)
+            # Check if the end of the file has been reached.
+            if len(result) == 1 and result[0] == eof:
+                break
+            elif len(result) == 3:
+                data.extend(result)
+    _create_csv(data)
+
+
+def _create_csv(data):
+    pos = 0
+    mode = 'w'
+
+    with open(csv_file, mode) as f:
+        for item in data:
+            if not _is_timestamp(item):
+                if (pos + 1) == len(data):
+                    f.write('%s' % item)
+                else:
+                    f.write('%s,' % item)
+            pos += 1
+
+
+def _is_timestamp(data):
+    # Use the following date format: 24hour:minute:second
+    # day-month-year. Example date: 28 Feb 2004, 14:45:10.
+    date_format = '%d %b %Y, %H:%M:%S'
+    result = True
+
+    try:
+        datetime.strptime(data, date_format)
+    except ValueError:
+        result = False
+    return result
+
+
+def _extract_data(line):
+    data = []
+
+    line = line.replace('[SUM]', '')
+    line = line[line.index('sec') + len('sec'):].strip()
+    data.append(line[:line.index('KBytes')].strip())
+    line = line[line.index('KBytes') + len('KBytes'):]
+    data.append(line[:line.index('KBytes')].strip())
+    return data
+
+
+def _extract_timestamp(data):
+    timestamp = ''
+
+    data = data.replace('--', '').replace('Test', '').replace('\n', '').strip()
+    if _is_timestamp(data):
+        timestamp = data
+    return timestamp
+
+
+def _read_result(f):
+    result = [eof]
+    line = f.readline()
+
+    # Check to see if there is data.
+    if line != '':
+        result = []
+        if _extract_timestamp(line) != '':
+            result = [_extract_timestamp(line)]
+            while True:
+                line = f.readline()
+                if line.startswith('[SUM]'):
+                    result.extend(_extract_data(line))
+                    break
+                elif line == eof:
+                    break
+    return result
+
+if __name__ == '__main__':
+    print 'Generating CSV file...'
+    try:
+        _main()
+    except KeyboardInterrupt:
+        print '\nExiting...'
+        exit(0)
+    print 'Finished generating CSV file.'
