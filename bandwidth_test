@@ -9,30 +9,28 @@ from datetime import datetime
 from apscheduler.schedulers.background import BlockingScheduler
 
 __author__ = 'Nick Apperley'
-# server_addr = 'iperf.scottlinux.com'
 server_addr = '121.74.232.70'
-# port = 5201
 port = 5001
 input_file = 'iperf_test.a'
 output_file = 'iperf_results.txt'
-# Interval in minutes.
+# Interval in minutes between threads.
 interval = 10
-no_of_streams = 8
+streams = 8
 
 
 def _run_iperf():
     out_type = subprocess.PIPE
     args = ['iperf', '-c', server_addr, '-p', '%d' % port, '-f',
-            'Kbits', '-F', input_file, '-P', '%d' % no_of_streams]
+            'Kbits', '-F', input_file, '-P', '%d' % streams]
     process = subprocess.Popen(args, stdout=out_type)
 
     return process.communicate()[0]
 
 
 def _generate_output(data):
-    file_mode = 'a'
+    mode = 'a'
 
-    with open(output_file, file_mode) as f:
+    with open(output_file, mode) as f:
         f.write('%s\n' % data)
 
 
@@ -48,9 +46,9 @@ def _bandwidth_test():
     results = _run_iperf()
 
     print '[%s]\n' % _timestamp()
-    print results
+    print '%s\n\n' % results
     _generate_output('--Test %s--' % _timestamp())
-    _generate_output(results)
+    _generate_output('%s\n' % results)
 
 
 if __name__ == '__main__':

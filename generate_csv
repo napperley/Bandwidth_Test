@@ -1,42 +1,53 @@
 #!/usr/bin/python2.7
 
 from datetime import datetime
+import os
 
 __author__ = 'Nick Apperley'
-input_file = '/home/napperley/iperf_results.txt'
-csv_file = '/home/napperley/bandwidth_test.csv'
+input_file = 'iperf_results.txt'
+csv_file = 'bandwidth_test.csv'
 # End of file.
 eof = ''
 
 
 def _main():
-    result = []
-    data = []
+    data = {}
     mode = 'r'
 
     with open(input_file, mode) as f:
         while True:
             result = _read_result(f)
+
             # Check if the end of the file has been reached.
             if len(result) == 1 and result[0] == eof:
                 break
-            elif len(result) == 3:
-                data.extend(result)
+            elif len(result) == 5:
+                data[result[0]] = [result[1], result[2], result[3], result[4]]
     _create_csv(data)
 
 
 def _create_csv(data):
-    pos = 0
     mode = 'w'
+    headers = 'Timestamp, Server IP Addr, TCP Window Size, Transfer, Bandwidth\n'
 
-    with open(csv_file, mode) as f:
-        for item in data:
-            if not _is_timestamp(item):
-                if (pos + 1) == len(data):
-                    f.write('%s' % item)
-                else:
-                    f.write('%s,' % item)
-            pos += 1
+    if not os.path.exists(csv_file):
+        with open(csv_file, mode) as f:
+            f.write(headers)
+            for key in data:
+                items = data[key]
+                f.write('"%s", ' % key)
+                _process_csv_items(items, f)
+
+
+def _process_csv_items(items, items_file):
+    pos = 0
+
+    for i in items:
+        if (pos + 1) == len(items):
+            items_file.write('%s\n' % i)
+        else:
+            items_file.write('%s, ' % i)
+        pos += 1
 
 
 def _is_timestamp(data):
@@ -52,15 +63,15 @@ def _is_timestamp(data):
     return result
 
 
-def _extract_data(line):
-    data = []
+def _extract_sum(data):
+    result = []
 
-    line = line.replace('[SUM]', '')
-    line = line[line.index('sec') + len('sec'):].strip()
-    data.append(line[:line.index('KBytes')].strip())
-    line = line[line.index('KBytes') + len('KBytes'):]
-    data.append(line[:line.index('KBytes')].strip())
-    return data
+    data = data.replace('[SUM]', '')
+    data = data[data.index('sec') + len('sec'):].strip()
+    result.append(data[:data.index('KBytes')].strip())
+    data = data[data.index('KBytes') + len('KBytes'):]
+    result.append(data[:data.index('KBytes')].strip())
+    return result
 
 
 def _extract_timestamp(data):
@@ -72,9 +83,9 @@ def _extract_timestamp(data):
     return timestamp
 
 
-def _read_result(f):
+def _read_result(tmp_file):
     result = [eof]
-    line = f.readline()
+    line = tmp_file.readline()
 
     # Check to see if there is data.
     if line != '':
@@ -82,15 +93,32 @@ def _read_result(f):
         if _extract_timestamp(line) != '':
             result = [_extract_timestamp(line)]
             while True:
-                line = f.readline()
-                if line.startswith('[SUM]'):
-                    result.extend(_extract_data(line))
-                    break
-                elif line == eof:
+                end_file_read = _process_line(tmp_file.readline())
+                if end_file_read:
                     break
     return result
 
+
+def _process_line(line, result):
+    end_file_read = False
+
+    if line.startswith('[SUM]'):
+        result.extend(_extract_sum(line))
+        end_file_read = True
+    elif line.startswith('Client connecting to'):
+        result.append(line[len('Client connecting to'):line.index(',')].strip())
+    elif line.startswith('TCP window size:'):
+        result.append(line[len('TCP window size:'):line.index('KByte')].strip())
+    elif line == eof:
+        end_file_read = True
+    return end_file_read
+
+
 if __name__ == '__main__':
+    if os.path.exists(csv_file):
+        print 'CSV file %s already exists!' % csv_file
+        print 'Exiting...'
+        exit(-1)
     print 'Generating CSV file...'
     try:
         _main()
